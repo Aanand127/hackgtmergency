@@ -3,52 +3,43 @@ import { ChatInputSchema, ChatOutput, chatWorkflow } from './workflows/chatWorkf
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { createSSEStream } from '../utils/streamUtils';
 
-// Helper function to convert Zod schema to OpenAPI schema
+// ADD THIS IMPORT for Zod
+import { z } from 'zod'; 
+
+import { 
+  testMedicalToolWorkflow, 
+  TestMedicalToolInputSchema,
+  TestMedicalToolOutputSchema // We still import the schema object
+} from './workflows/testMedicalTool';
+
+// ADD THIS TYPE DEFINITION using z.infer
+type TestMedicalToolOutput = z.infer<typeof TestMedicalToolOutputSchema>;
+
+// Helper function
 function toOpenApiSchema(schema: Parameters<typeof zodToJsonSchema>[0]) {
   return zodToJsonSchema(schema) as Record<string, unknown>;
 }
 
-/**
- * API routes for the Mastra backend
- *
- * These routes handle chat interactions between the Cedar-OS frontend
- * and your Mastra agents. The chat UI will automatically use these endpoints.
- *
- * - /chat: Standard request-response chat endpoint
- * - /chat/stream: Server-sent events (SSE) endpoint for streaming responses
- */
 export const apiRoutes = [
+  // ... (your existing /chat and /chat/stream routes are unchanged) ...
   registerApiRoute('/chat', {
     method: 'POST',
     openapi: {
       requestBody: {
-        content: {
-          'application/json': {
-            schema: toOpenApiSchema(ChatInputSchema),
-          },
-        },
+        content: { 'application/json': { schema: toOpenApiSchema(ChatInputSchema) } },
       },
     },
     handler: async (c) => {
       try {
         const body = await c.req.json();
-        const { prompt, temperature, maxTokens, systemPrompt } = ChatInputSchema.parse(body);
-
+        const parsedBody = ChatInputSchema.parse(body);
         const run = await chatWorkflow.createRunAsync();
-        const result = await run.start({
-          inputData: { prompt, temperature, maxTokens, systemPrompt },
-        });
-
+        const result = await run.start({ inputData: parsedBody });
         if (result.status === 'success') {
-          // TODO: Add any response transformation or logging here
-          console.log('Sending response', JSON.stringify(result.result, null, 2));
           return c.json<ChatOutput>(result.result as ChatOutput);
         }
-
-        // TODO: Handle other workflow statuses if needed
         throw new Error('Workflow did not complete successfully');
       } catch (error) {
-        console.error(error);
         return c.json({ error: error instanceof Error ? error.message : 'Internal error' }, 500);
       }
     },
@@ -57,9 +48,36 @@ export const apiRoutes = [
     method: 'POST',
     openapi: {
       requestBody: {
+        content: { 'application/json': { schema: toOpenApiSchema(ChatInputSchema) } },
+      },
+    },
+    handler: async (c) => {
+      try {
+        const body = await c.req.json();
+        const parsedBody = ChatInputSchema.parse(body);
+        return createSSEStream(async (controller) => {
+          const run = await chatWorkflow.createRunAsync();
+          const result = await run.start({
+            inputData: { ...parsedBody, streamController: controller },
+          });
+          if (result.status !== 'success') {
+            throw new Error(`Workflow failed: ${result.status}`);
+          }
+        });
+      } catch (error) {
+        return c.json({ error: error instanceof Error ? error.message : 'Internal error' }, 500);
+      }
+    },
+  }),
+
+  // Your updated medical tool route
+  registerApiRoute('/v1/test-medical-tool', {
+    method: 'POST',
+    openapi: {
+      requestBody: {
         content: {
           'application/json': {
-            schema: toOpenApiSchema(ChatInputSchema),
+            schema: toOpenApiSchema(TestMedicalToolInputSchema),
           },
         },
       },
@@ -67,25 +85,17 @@ export const apiRoutes = [
     handler: async (c) => {
       try {
         const body = await c.req.json();
-        const { prompt, temperature, maxTokens, systemPrompt } = ChatInputSchema.parse(body);
+        const { drug_name } = TestMedicalToolInputSchema.parse(body);
 
-        return createSSEStream(async (controller) => {
-          const run = await chatWorkflow.createRunAsync();
-          const result = await run.start({
-            inputData: {
-              prompt,
-              temperature,
-              maxTokens,
-              systemPrompt,
-              streamController: controller,
-            },
-          });
+        const run = await testMedicalToolWorkflow.createRunAsync();
+        const result = await run.start({ inputData: { drug_name } });
 
-          if (result.status !== 'success') {
-            // TODO: Handle workflow errors appropriately
-            throw new Error(`Workflow failed: ${result.status}`);
-          }
-        });
+        if (result.status === 'success') {
+          // FIX: Use the new type 'TestMedicalToolOutput' here
+          return c.json<TestMedicalToolOutput>(result.result as TestMedicalToolOutput);
+        }
+
+        throw new Error(`Workflow failed with status: ${result.status}`);
       } catch (error) {
         console.error(error);
         return c.json({ error: error instanceof Error ? error.message : 'Internal error' }, 500);
