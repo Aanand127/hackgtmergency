@@ -10,7 +10,7 @@ import { productLookupAgent } from './agents/productLookupAgent';
 import { researchAgent } from './agents/researchAgent';
 import { medicineWorkflow } from './workflows/medicineWorkflow';
 import { registerApiRoute } from '@mastra/core/server';
-import { testMedicalToolWorkflow } from './workflows/testMedicalTool'; // 1. Import your workflow
+import { testMedicalToolWorkflow } from './workflows/medicalTool'; // 1. Import your workflow
 import { medicalToolAgent } from './agents/medicalToolAgent';
 
 /**

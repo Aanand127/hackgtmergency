@@ -18,7 +18,6 @@ export const medicalRetrievalTool = createTool({
       return { info: "API Error: OPENFDA_API_KEY is not set in environment variables." };
     }
 
-    // CHANGED: This query is now much broader and more effective.
     const searchParams = new URLSearchParams({
       search: `(openfda.generic_name:"${query}" OR openfda.brand_name:"${query}") OR (description:"${query}" OR indications_and_usage:"${query}")`,
       api_key: apiKey,

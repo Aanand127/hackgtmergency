@@ -10,7 +10,7 @@ import {
   testMedicalToolWorkflow, 
   TestMedicalToolInputSchema,
   TestMedicalToolOutputSchema // We still import the schema object
-} from './workflows/testMedicalTool';
+} from './workflows/medicalTool';
 
 // ADD THIS TYPE DEFINITION using z.infer
 type TestMedicalToolOutput = z.infer<typeof TestMedicalToolOutputSchema>;
