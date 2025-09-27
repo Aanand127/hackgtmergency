@@ -26,41 +26,9 @@ const classifyStep = createStep({
 });
 
 const medicalInfoStepAgent = createStep(medicineInfoAgent);
-
-const handleStep = createStep({
-  id: "handle-step",
-  description: "Route to appropriate agent",
-  inputSchema: z.object({
-    input: z.string(),
-    intent: z.string()
-  }),
-  outputSchema: z.object({
-    output: z.string()
-  }),
-  execute: async ({ inputData }) => {
-    const { input, intent } = inputData;
-
-    let response;
-    switch (intent.toLowerCase()) {
-      case "general_need":
-        response = await medicineInfoAgent.generate([{ role: "user", content: input }]);
-        break;
-      case "product_lookup":
-        response = await productLookupAgent.generate([{ role: "user", content: input }]);
-        break;
-      case "compare":
-        response = await comparisonAgent.generate([{ role: "user", content: input }]);
-        break;
-      case "research":
-        response = await researchAgent.generate([{ role: "user", content: input }]);
-        break;
-      default:
-        response = { text: "Sorry, I couldn't classify your request." };
-    }
-
-    return { output: response.text };
-  }
-});
+const productLookupStepAgent = createStep(productLookupAgent);
+const comparisonStepAgent = createStep(comparisonAgent)
+const researchStepAgent = createStep(researchAgent);
 
 export const medicineWorkflow = createWorkflow({
   id: "medicine-workflow",
@@ -74,10 +42,16 @@ export const medicineWorkflow = createWorkflow({
 })
 .then(classifyStep)
 .map(async ({ inputData }) => {
-  const { input } = inputData;
+  const { input, intent } = inputData;
   return {
-    prompt: `Provide options for ${ input }`
-  }
+    prompt: `${ input }`,
+    intent: intent
+  };
 })
-  .then(medicalInfoStepAgent)
+  .branch([
+    [async ({ inputData: { intent, prompt }}) => intent == "\"general_need\"", medicalInfoStepAgent],
+    [async ({ inputData: { intent, prompt }}) => intent == "\"product_lookup\"", productLookupStepAgent],
+    [async ({ inputData: { intent, prompt }}) => intent == "\"compare\"", comparisonStepAgent],
+    [async ({ inputData: { intent, prompt }}) => intent == "\"research\"", researchStepAgent],
+  ])
   .commit();
