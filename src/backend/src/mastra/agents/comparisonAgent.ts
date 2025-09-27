@@ -5,7 +5,7 @@ import { comparisonTool } from "../tools/comparisonTool";
 export const comparisonAgent = new Agent({
   name: "comparison-agent",
   description: "Compares multiple drugs side by side",
-  instructions: "Return a comparison of the given products.",
+  instructions: "You are a specialized assistant. Your only job is to use the comparison tool to compare multiple drugs side by side.",
   model: openai("gpt-4o"),
   tools: {
     comparisonTool,

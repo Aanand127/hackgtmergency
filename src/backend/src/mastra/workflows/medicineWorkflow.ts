@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createStep, createWorkflow } from "@mastra/core";
 import { classifierAgent } from "../agents/classifierAgent";
 import { medicineInfoAgent } from "../agents/medicineInfoAgent";
-import { productLookupAgent } from "../agents/productLookupAgent";
+import { pricingLookupAgent } from "../agents/pricingLookupAgent";
 import { comparisonAgent } from "../agents/comparisonAgent";
 import { researchAgent } from "../agents/researchAgent";
 
@@ -26,7 +26,7 @@ const classifyStep = createStep({
 });
 
 const medicalInfoStepAgent = createStep(medicineInfoAgent);
-const productLookupStepAgent = createStep(productLookupAgent);
+const productLookupStepAgent = createStep(pricingLookupAgent);
 const comparisonStepAgent = createStep(comparisonAgent)
 const researchStepAgent = createStep(researchAgent);
 
