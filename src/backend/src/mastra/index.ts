@@ -3,6 +3,12 @@ import { LibSQLStore } from '@mastra/libsql';
 import { chatWorkflow } from './workflows/chatWorkflow';
 import { apiRoutes } from './apiRegistry';
 import { starterAgent } from './agents/starterAgent';
+import { classifierAgent } from './agents/classifierAgent';
+import { comparisonAgent } from './agents/comparisonAgent';
+import { medicineInfoAgent } from './agents/medicineInfoAgent';
+import { productLookupAgent } from './agents/productLookupAgent';
+import { researchAgent } from './agents/researchAgent';
+import { medicineWorkflow } from './workflows/medicineWorkflow';
 
 /**
  * Main Mastra configuration
@@ -15,8 +21,8 @@ import { starterAgent } from './agents/starterAgent';
  * - API routes for the frontend to communicate with
  */
 export const mastra = new Mastra({
-  agents: { starterAgent },
-  workflows: { chatWorkflow },
+  agents: { starterAgent, classifierAgent, comparisonAgent, medicineInfoAgent, productLookupAgent, researchAgent },
+  workflows: { chatWorkflow, medicineWorkflow },
   storage: new LibSQLStore({
     url: ':memory:', // TODO: Replace with your database URL for persistence
   }),
