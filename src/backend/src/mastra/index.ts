@@ -9,6 +9,9 @@ import { medicineInfoAgent } from './agents/medicineInfoAgent';
 import { productLookupAgent } from './agents/productLookupAgent';
 import { researchAgent } from './agents/researchAgent';
 import { medicineWorkflow } from './workflows/medicineWorkflow';
+import { registerApiRoute } from '@mastra/core/server';
+import { testMedicalToolWorkflow } from './workflows/testMedicalTool'; // 1. Import your workflow
+import { medicalToolAgent } from './agents/medicalToolAgent';
 
 /**
  * Main Mastra configuration
@@ -21,8 +24,8 @@ import { medicineWorkflow } from './workflows/medicineWorkflow';
  * - API routes for the frontend to communicate with
  */
 export const mastra = new Mastra({
-  agents: { starterAgent, classifierAgent, comparisonAgent, medicineInfoAgent, productLookupAgent, researchAgent },
-  workflows: { chatWorkflow, medicineWorkflow },
+  agents: { starterAgent, classifierAgent, comparisonAgent, medicineInfoAgent, productLookupAgent, researchAgent, medicalToolAgent },
+  workflows: { chatWorkflow, medicineWorkflow, testMedicalToolWorkflow }, // 2. Register your workflow here
   storage: new LibSQLStore({
     url: ':memory:', // TODO: Replace with your database URL for persistence
   }),
