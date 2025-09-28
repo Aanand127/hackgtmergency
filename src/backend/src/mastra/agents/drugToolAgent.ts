@@ -2,7 +2,7 @@ import { Agent } from '@mastra/core';
 import { openai } from '@ai-sdk/openai';
 import { medicalRetrievalTool } from '../tools/medicalRetrieval'; // Adjust path if needed
 
-export const medicalToolAgent = new Agent({
+export const drugToolAgent = new Agent({
   name: 'Medical Tool Agent',
   instructions: `
     You are a specialized assistant. Your only job is to use the medical-retrieval tool
