@@ -18,7 +18,7 @@ const runMedicalAgentStep = createStep({
     
     // 1. Define the agent's API endpoint URL
     // The agent ID 'medicalToolAgent' must match the key you used to register it in src/index.ts
-    const agentId = 'medicalToolAgent';
+    const agentId = 'drugToolAgent';
     const apiUrl = `http://localhost:4111/api/agents/${agentId}/generate`;
 
     try {
