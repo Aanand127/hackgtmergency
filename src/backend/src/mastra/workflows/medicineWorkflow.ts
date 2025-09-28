@@ -6,12 +6,18 @@ import { pricingLookupAgent } from "../agents/pricingLookupAgent";
 import { comparisonAgent } from "../agents/comparisonAgent";
 import { researchAgent } from "../agents/researchAgent";
 
+// Explicit schemas for API registry
+export const MedicineInputSchema = z.object({
+  input: z.string(),
+});
+export const MedicineOutputSchema = z.object({
+  output: z.string(),
+});
+
 const classifyStep = createStep({
   id: "classify-step",
   description: "Classify user intent",
-  inputSchema: z.object({
-    input: z.string()
-  }),
+  inputSchema: MedicineInputSchema,
   outputSchema: z.object({
     intent: z.string(),
     input: z.string()
@@ -33,12 +39,8 @@ const researchStepAgent = createStep(researchAgent);
 export const medicineWorkflow = createWorkflow({
   id: "medicine-workflow",
   description: "Routes user queries to the correct medicine-related agent",
-  inputSchema: z.object({
-    input: z.string(),
-  }),
-  outputSchema: z.object({
-    output: z.string()
-  })
+  inputSchema: MedicineInputSchema,
+  outputSchema: MedicineOutputSchema,
 })
 .then(classifyStep)
 .map(async ({ inputData }) => {

@@ -1,19 +1,12 @@
 import { registerApiRoute } from '@mastra/core/server';
+import { Workflow } from '@mastra/core/workflows';
 import { ChatInputSchema, ChatOutput, chatWorkflow } from './workflows/chatWorkflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { createSSEStream } from '../utils/streamUtils';
 
-// ADD THIS IMPORT for Zod
-import { z } from 'zod'; 
-
-import { 
-  testMedicalToolWorkflow, 
-  TestMedicalToolInputSchema,
-  TestMedicalToolOutputSchema // We still import the schema object
-} from './workflows/drugTool';
-
-// ADD THIS TYPE DEFINITION using z.infer
-type TestMedicalToolOutput = z.infer<typeof TestMedicalToolOutputSchema>;
+import { medicineWorkflow, MedicineInputSchema, MedicineOutputSchema } from './workflows/medicineWorkflow';
+import { researchWorkflow, ResearchInputSchema, ResearchOutputSchema } from './workflows/researchWorkflow';
+import { generateReportWorkflow, ReportInputSchema, ReportOutputSchema } from './workflows/reportWorkflow';
 
 // Helper function
 function toOpenApiSchema(schema: Parameters<typeof zodToJsonSchema>[0]) {
@@ -69,35 +62,97 @@ export const apiRoutes = [
       }
     },
   }),
-
-  // Your updated medical tool route
-  registerApiRoute('/v1/test-medical-tool', {
+  registerApiRoute('/workflows/medicine', {
     method: 'POST',
     openapi: {
       requestBody: {
-        content: {
-          'application/json': {
-            schema: toOpenApiSchema(TestMedicalToolInputSchema),
-          },
-        },
+        content: { 'application/json': { schema: toOpenApiSchema(MedicineInputSchema) } },
       },
+      responses: {
+        200: {
+          description: "Successful response",
+          content: { 'application/json': { schema: toOpenApiSchema(MedicineOutputSchema) } }
+        }
+      }
     },
     handler: async (c) => {
       try {
         const body = await c.req.json();
-        const { drug_name } = TestMedicalToolInputSchema.parse(body);
-
-        const run = await testMedicalToolWorkflow.createRunAsync();
-        const result = await run.start({ inputData: { drug_name } });
-
+        const parsedBody = MedicineInputSchema.parse(body);
+        const run = await medicineWorkflow.createRunAsync();
+        const result = await run.start({ inputData: parsedBody });
         if (result.status === 'success') {
-          // FIX: Use the new type 'TestMedicalToolOutput' here
-          return c.json<TestMedicalToolOutput>(result.result as TestMedicalToolOutput);
+          return c.json(result.result);
         }
-
-        throw new Error(`Workflow failed with status: ${result.status}`);
+        if (result.status === 'suspended') {
+          return c.json(result);
+        }
+        throw new Error('Workflow did not complete successfully');
       } catch (error) {
-        console.error(error);
+        return c.json({ error: error instanceof Error ? error.message : 'Internal error' }, 500);
+      }
+    },
+  }),
+  registerApiRoute('/workflows/research', {
+    method: 'POST',
+    openapi: {
+      requestBody: {
+        content: { 'application/json': { schema: toOpenApiSchema(ResearchInputSchema) } },
+      },
+      responses: {
+        200: {
+          description: "Successful response",
+          content: { 'application/json': { schema: toOpenApiSchema(ResearchOutputSchema) } }
+        }
+      }
+    },
+    handler: async (c) => {
+      try {
+        const body = await c.req.json();
+        // Only support stateless start (no resume)
+        const parsedBody = ResearchInputSchema.parse(await c.req.json());
+        const run = await researchWorkflow.createRunAsync();
+        const result = await run.start({ inputData: parsedBody });
+        if (result.status === 'success') {
+          return c.json(result.result);
+        }
+        if (result.status === 'suspended') {
+          return c.json(result);
+        }
+        throw new Error('Workflow did not complete successfully');
+      } catch (error) {
+        return c.json({ error: error instanceof Error ? error.message : 'Internal error' }, 500);
+      }
+    },
+  }),
+  registerApiRoute('/workflows/generate-report', {
+    method: 'POST',
+    openapi: {
+      requestBody: {
+        content: { 'application/json': { schema: toOpenApiSchema(ReportInputSchema) } },
+      },
+      responses: {
+        200: {
+          description: "Successful response",
+          content: { 'application/json': { schema: toOpenApiSchema(ReportOutputSchema) } }
+        }
+      }
+    },
+    handler: async (c) => {
+      try {
+        const body = await c.req.json();
+        // Only support stateless start (no resume)
+        const parsedBody = ReportInputSchema.parse(await c.req.json());
+        const run = await generateReportWorkflow.createRunAsync();
+        const result = await run.start({ inputData: parsedBody });
+        if (result.status === 'success') {
+          return c.json(result.result);
+        }
+        if (result.status === 'suspended') {
+          return c.json(result);
+        }
+        throw new Error('Workflow did not complete successfully');
+      } catch (error) {
         return c.json({ error: error instanceof Error ? error.message : 'Internal error' }, 500);
       }
     },

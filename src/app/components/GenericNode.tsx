@@ -65,7 +65,7 @@ const WORKFLOWS: WorkflowDefinition[] = [
     description: 'Routes medicine-related intents to specialized agents.',
     color: '#34d399',
     icon: '🩺',
-    apiRoute: '/v1/workflows/medicine',
+    apiRoute: '/api/workflows/medicine',
     buildPayload: (prompt) => ({ input: prompt }),
     parseResult: (response) => {
       const data = response as { output?: string };
@@ -97,7 +97,7 @@ const WORKFLOWS: WorkflowDefinition[] = [
     description: 'Generates narrative reports from approved research.',
     color: '#f472b6',
     icon: '📄',
-    apiRoute: '/v1/workflows/generate-report',
+    apiRoute: '/api/workflows/generate-report',
     buildPayload: () => ({}),
     parseResult: (response) => {
       const data = response as { report?: string; completed?: boolean };
@@ -114,7 +114,7 @@ const WORKFLOWS: WorkflowDefinition[] = [
     description: 'Performs multi-step research with human-in-the-loop approval.',
     color: '#c084fc',
     icon: '🔍',
-    apiRoute: '/v1/workflows/research',
+    apiRoute: '/api/workflows/research',
     buildPayload: () => ({}),
     parseResult: (response) => {
       const data = response as { approved?: boolean; researchData?: unknown };
@@ -253,8 +253,11 @@ const GenericNode: React.FC = () => {
           ? selectedWorkflow.buildPayload(inputValue.trim())
           : { prompt: inputValue.trim() };
 
-        // Fire the workflow via the custom Mastra HTTP route exposed in `src/backend/src/mastra/apiRegistry.ts`.
-        const response = await fetch(`${mastraBaseUrl}${selectedWorkflow.apiRoute}`, {
+        // Determine if we should use Next.js API routes or Mastra backend directly
+        const isNextjsRoute = selectedWorkflow.apiRoute?.startsWith('/api/');
+        const baseUrl = isNextjsRoute ? '' : mastraBaseUrl;
+        
+        const response = await fetch(`${baseUrl}${selectedWorkflow.apiRoute}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),

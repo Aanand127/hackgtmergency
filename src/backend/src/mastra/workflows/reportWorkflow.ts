@@ -1,40 +1,76 @@
 import { createStep, createWorkflow } from '@mastra/core/workflows';
-import { researchWorkflow } from './researchWorkflow';
 import { z } from 'zod';
 
-// Map research output to report input and handle conditional logic
-const processResearchResultStep = createStep({
-  id: 'process-research-result',
-  inputSchema: z.object({
-    approved: z.boolean(),
-    researchData: z.any(),
-  }),
-  outputSchema: z.object({
-    report: z.string().optional(),
-    completed: z.boolean(),
-  }),
+// Explicit schemas for API registry
+export const ReportInputSchema = z.object({
+  input: z.string(),
+});
+export const ReportOutputSchema = z.object({
+  report: z.string().optional(),
+  completed: z.boolean(),
+});
+
+const researchAndReportStep = createStep({
+  id: 'research-and-report',
+  inputSchema: ReportInputSchema,
+  outputSchema: ReportOutputSchema,
   execute: async ({ inputData, mastra }) => {
-    // First determine if research was approved/successful
-    const approved = inputData.approved && !!inputData.researchData;
+    const { input } = inputData;
 
-    if (!approved) {
-      console.log('Research not approved or incomplete, ending workflow');
-      return { completed: false };
-    }
-
-    // If approved, generate report
     try {
-      console.log('Generating report...');
-      const agent = mastra.getAgent('fullReportAgent');
-      const response = await agent.generate([
+      // Run research agent
+      const researchAgent = mastra.getAgent('fullResearchAgent');
+      const researchPrompt = `Research the following topic thoroughly using the two-phase process: "${input}".
+
+      Phase 1: Search for 2-3 initial queries about this topic
+      Phase 2: Search for follow-up questions from the learnings (then STOP)
+
+      Return findings in JSON format with queries, searchResults, learnings, completedQueries, and phase.`;
+
+      const researchResult = await researchAgent.generate(
+        [
+          {
+            role: 'user',
+            content: researchPrompt,
+          },
+        ],
+        {
+          maxSteps: 15,
+          experimental_output: z.object({
+            queries: z.array(z.string()),
+            searchResults: z.array(
+              z.object({
+                title: z.string(),
+                url: z.string(),
+                relevance: z.string(),
+              }),
+            ),
+            learnings: z.array(
+              z.object({
+                learning: z.string(),
+                followUpQuestions: z.array(z.string()),
+                source: z.string(),
+              }),
+            ),
+            completedQueries: z.array(z.string()),
+            phase: z.string().optional(),
+          }),
+        },
+      );
+
+      // Generate report from research result
+      const reportAgent = mastra.getAgent('fullReportAgent');
+      const reportResponse = await reportAgent.generate([
         {
           role: 'user',
-          content: `Generate a report based on this research: ${JSON.stringify(inputData.researchData)}`,
+          content: `Generate a report based on this research: ${JSON.stringify(researchResult.object)}`,
         },
       ]);
 
-      console.log('Report generated successfully!');
-      return { report: response.text, completed: true };
+      return {
+        report: reportResponse.text,
+        completed: true,
+      };
     } catch (error) {
       console.error('Error generating report:', error);
       return { completed: false };
@@ -42,24 +78,10 @@ const processResearchResultStep = createStep({
   },
 });
 
-// Create the report generation workflow that iteratively researches and generates reports
 export const generateReportWorkflow = createWorkflow({
   id: 'generate-report-workflow',
-  steps: [researchWorkflow, processResearchResultStep],
-  inputSchema: z.object({}),
-  outputSchema: z.object({
-    report: z.string().optional(),
-    completed: z.boolean(),
-  }),
-});
-
-// The workflow logic:
-// 1. Run researchWorkflow iteratively until approved
-// 2. Process results and generate report if approved
-generateReportWorkflow
-  .dowhile(researchWorkflow, async ({ inputData }) => {
-    const isCompleted = inputData.approved;
-    return isCompleted !== true;
-  })
-  .then(processResearchResultStep)
-  .commit();
+  inputSchema: ReportInputSchema,
+  outputSchema: ReportOutputSchema,
+})
+.then(researchAndReportStep)
+.commit();

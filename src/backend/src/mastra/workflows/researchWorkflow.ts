@@ -1,57 +1,25 @@
 import { createWorkflow, createStep } from '@mastra/core/workflows';
 import { z } from 'zod';
 
-// Step 1: Get user query
-const getUserQueryStep = createStep({
-  id: 'get-user-query',
-  inputSchema: z.object({}),
-  outputSchema: z.object({
-    query: z.string(),
-  }),
-  resumeSchema: z.object({
-    query: z.string(),
-  }),
-  suspendSchema: z.object({
-    message: z.object({
-      query: z.string(),
-    }),
-  }),
-  execute: async ({ resumeData, suspend }) => {
-    if (resumeData) {
-      return {
-        ...resumeData,
-        query: resumeData.query || '',
-      };
-    }
-
-    await suspend({
-      message: {
-        query: 'What would you like to research?',
-      },
-    });
-
-    return {
-      query: '',
-    };
-  },
+// Explicit schemas for API registry
+export const ResearchInputSchema = z.object({
+  input: z.string(),
+});
+export const ResearchOutputSchema = z.object({
+  summary: z.string(),
+  researchData: z.any(),
 });
 
-// Step 2: Research
 const researchStep = createStep({
   id: 'research',
-  inputSchema: z.object({
-    query: z.string(),
-  }),
-  outputSchema: z.object({
-    researchData: z.any(),
-    summary: z.string(),
-  }),
+  inputSchema: ResearchInputSchema,
+  outputSchema: ResearchOutputSchema,
   execute: async ({ inputData, mastra }) => {
-    const { query } = inputData;
+    const { input } = inputData;
 
     try {
       const agent = mastra.getAgent('fullResearchAgent');
-      const researchPrompt = `Research the following topic thoroughly using the two-phase process: "${query}".
+      const researchPrompt = `Research the following topic thoroughly using the two-phase process: "${input}".
 
       Phase 1: Search for 2-3 initial queries about this topic
       Phase 2: Search for follow-up questions from the learnings (then STOP)
@@ -89,66 +57,67 @@ const researchStep = createStep({
         },
       );
 
-      // Create a summary
-      const summary = `Research completed on "${query}:" \n\n ${JSON.stringify(result.object, null, 2)}\n\n`;
+      // Create a nicely formatted summary
+      const obj = result.object;
+      let summary = `Research completed on "${input}":\n\n`;
+
+      if (obj && obj.queries && obj.queries.length) {
+        summary += "## Queries\n";
+        obj.queries.forEach((q: string, i: number) => {
+          summary += `${i + 1}. ${q}\n`;
+        });
+        summary += "\n";
+      }
+
+      if (obj && obj.searchResults && obj.searchResults.length) {
+        summary += "## Search Results\n";
+        obj.searchResults.forEach((res: any, i: number) => {
+          summary += `${i + 1}. [${res.title}](${res.url}) (${res.relevance})\n`;
+        });
+        summary += "\n";
+      }
+
+      if (obj && obj.learnings && obj.learnings.length) {
+        summary += "## Key Learnings\n";
+        obj.learnings.forEach((l: any, i: number) => {
+          summary += `${i + 1}. ${l.learning}\n   - Source: ${l.source}\n`;
+          if (l.followUpQuestions && l.followUpQuestions.length) {
+            summary += `   - Follow-up: ${l.followUpQuestions.join("; ")}\n`;
+          }
+        });
+        summary += "\n";
+      }
+
+      if (obj && obj.completedQueries && obj.completedQueries.length) {
+        summary += "## Completed Queries\n";
+        obj.completedQueries.forEach((q: string, i: number) => {
+          summary += `${i + 1}. ${q}\n`;
+        });
+        summary += "\n";
+      }
+
+      if (obj && obj.phase) {
+        summary += `## Phase\n${obj.phase}\n`;
+      }
 
       return {
-        researchData: result.object,
         summary,
+        researchData: obj,
       };
     } catch (error: any) {
       console.log({ error });
       return {
-        researchData: { error: error.message },
         summary: `Error: ${error.message}`,
+        researchData: { error: error.message },
       };
     }
   },
 });
 
-// Step 3: Get user approval
-const approvalStep = createStep({
-  id: 'approval',
-  inputSchema: z.object({
-    researchData: z.any(),
-    summary: z.string(),
-  }),
-  outputSchema: z.object({
-    approved: z.boolean(),
-    researchData: z.any(),
-  }),
-  resumeSchema: z.object({
-    approved: z.boolean(),
-  }),
-  execute: async ({ inputData, resumeData, suspend }) => {
-    if (resumeData) {
-      return {
-        ...resumeData,
-        researchData: inputData.researchData,
-      };
-    }
-
-    await suspend({
-      summary: inputData.summary,
-      message: `Is this research sufficient? [y/n] `,
-    });
-
-    return {
-      approved: false,
-      researchData: inputData.researchData,
-    };
-  },
-});
-
-// Define the workflow
 export const researchWorkflow = createWorkflow({
   id: 'research-workflow',
-  inputSchema: z.object({}),
-  outputSchema: z.object({
-    approved: z.boolean(),
-    researchData: z.any(),
-  }),
-  steps: [getUserQueryStep, researchStep, approvalStep],
-});
-
-researchWorkflow.then(getUserQueryStep).then(researchStep).then(approvalStep).commit();
+  inputSchema: ResearchInputSchema,
+  outputSchema: ResearchOutputSchema,
+})
+.then(researchStep)
+.commit();

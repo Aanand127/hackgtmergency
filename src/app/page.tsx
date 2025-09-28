@@ -6,6 +6,8 @@ import { ChatModeSelector } from '@/components/ChatModeSelector';
 import { CedarCaptionChat } from '@/cedar/components/chatComponents/CedarCaptionChat';
 import { FloatingCedarChat } from '@/cedar/components/chatComponents/FloatingCedarChat';
 import { SidePanelCedarChat } from '@/cedar/components/chatComponents/SidePanelCedarChat';
+import GenericNode from '@/app/components/GenericNode';
+import WorkflowRunner from './components/WorkflowRunner';
 
 type ChatMode = 'floating' | 'sidepanel' | 'caption';
 
@@ -14,17 +16,21 @@ export default function HomePage() {
   // Choose between caption, floating, or side panel chat modes
   const [chatMode, setChatMode] = React.useState<ChatMode>('caption');
 
+  
   const renderContent = () => (
-    <div className="relative h-screen w-full">
-      <ChatModeSelector currentMode={chatMode} onModeChange={setChatMode} />
+    <div className="relative min-h-screen w-full">
+      <div className="container mx-auto px-4 py-8">
+        
+        {/* Workflow Interface */}
+        <WorkflowRunner />
 
-      {chatMode === 'caption' && <CedarCaptionChat />}
-
-      {chatMode === 'floating' && (
-        <FloatingCedarChat side="right" title="Cedarling Chat" collapsedLabel="Chat with Cedar" />
-      )}
+        {/* Chat Interface */}
+        
+      </div> 
     </div>
   );
+
+  
 
   if (chatMode === 'sidepanel') {
     return (
