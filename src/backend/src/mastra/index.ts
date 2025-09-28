@@ -12,6 +12,13 @@ import { medicineWorkflow } from './workflows/medicineWorkflow';
 import { registerApiRoute } from '@mastra/core/server';
 import { testMedicalToolWorkflow } from './workflows/medicalTool'; // 1. Import your workflow
 import { medicalToolAgent } from './agents/medicalToolAgent';
+import { fullResearchAgent } from './agents/fullResearchAgent';
+import { learningExtractionAgent } from './agents/learningExtractAgent';
+import { evalAgent } from './agents/evalAgent';
+import { reportAgent } from './agents/reportAgent';
+import { webSummarizationAgent } from './agents/summarizeAgent';
+import { generateReportWorkflow } from './workflows/reportWorkflow';
+import { researchWorkflow } from './workflows/researchWorkflow';
 
 /**
  * Main Mastra configuration
@@ -24,10 +31,10 @@ import { medicalToolAgent } from './agents/medicalToolAgent';
  * - API routes for the frontend to communicate with
  */
 export const mastra = new Mastra({
-  agents: { starterAgent, classifierAgent, comparisonAgent, medicineInfoAgent, productLookupAgent, researchAgent, medicalToolAgent },
-  workflows: { chatWorkflow, medicineWorkflow, testMedicalToolWorkflow }, // 2. Register your workflow here
+  agents: { starterAgent, classifierAgent, comparisonAgent, medicineInfoAgent, productLookupAgent, researchAgent, medicalToolAgent, fullResearchAgent, learningExtractionAgent, evalAgent, reportAgent, webSummarizationAgent },
+  workflows: { chatWorkflow, medicineWorkflow, testMedicalToolWorkflow, generateReportWorkflow, researchWorkflow }, // 2. Register your workflow here
   storage: new LibSQLStore({
-    url: ':memory:', // TODO: Replace with your database URL for persistence
+    url: 'file:../mastra.db', // TODO: Replace with your database URL for persistence
   }),
   telemetry: {
     enabled: true,
